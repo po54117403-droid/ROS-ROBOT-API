@@ -1,236 +1,192 @@
-= diff_drive -- Differential-Drive Controller
-:imagesdir: ./images
+diff_drive — 差速驱动控制器
+该软件包实现了ROS节点，用于控制和监控差动驱动机器人。
 
-This package implements ROS nodes to control and monitor a differential-drive robot.
+包装 旨在比ROS控制器框架更轻量级，尽管其性能更低 性能，因为它是用 Python 编写的。如果你需要紧凑、实时的控制，你可能会想要 看ros_controllers， 这是C++包，包含一个与ros_control和controller_manager集成的差动驱动控制器。这些控制器是专门设计的 在同一过程中与硬件集成，而不是使用主题。相反，这个包裹 期望通过标准ROS消息发布所需的电机转速。
 
-The package
-is intended as a lighter-weight solution than the ROS controller framework, albeit with lower
-performance since it is written in Python. If you need tight, real-time control, you may want
-to look at link:http://wiki.ros.org/ros_controllers[ros_controllers],
-a C++ package which includes a differential-drive controller that is integrated with
-link:http://wiki.ros.org/ros_control[ros_control] and
-link:http://wiki.ros.org/controller_manager[controller_manager]. Those controllers are designed
-to integrate with hardware in the same process, rather than using topics. Instead, this package
-expects to publish the desired motor speeds using standard ROS messages.
+供给节点
+diff_drive_controller——将电机的扭转速度转换为车轮速度。
 
-== Supplied Nodes
+diff_drive_odometry—— 发布基于车轮编码器数据的里程计。
 
-* `diff_drive_controller` -- Converts from twist to wheel velocities for motors.
-* `diff_drive_odometry` -- Publishes odometry from wheel encoder data.
-* `diff_drive_go_to_goal` -- Moves the robot to a goal position.
-* `diff_drive_mock_robot` -- Implements a mock differential drive robot, for testing.
+diff_drive_go_to_goal——将机器人移动到目标位置。
 
-The nodes in this package are designed with these considerations:
+diff_drive_mock_robot—— 实现了一个模拟差动驱动机器人，用于测试。
 
-* The node and hardware implementing differential drive should deal only in encoder ticks.
-* Conversions to and from physical coordinates should happen within the nodes in this package.
-* This package should integrate cleanly with the navigation stack, perhaps with remappings.
-* Nodes should use standard topic and parameter names used by the navigation stack, but should allow remapping.
+本套件中的节点设计时考虑了以下因素：
 
-== Demo
+节点和实现差分驱动器的硬件应仅处理编码器刻度。
 
-To see all the nodes in this package in action, you can launch a demo from ROS. There are no
-dependencies other than the standard ROS packages.
+物理坐标的转换应在本包中的节点内进行。
 
-     roslaunch diff_drive demo.launch
-     
-This launches _rviz_ as part of the demo, and shows the robot position as a small coordinate system on
-a 0.25m grid. In rviz you can move the robot by clicking the _2D Nav Goal_ button in the tools panel at the top.
-Then click and drag within the grid to set the robot goal position and heading. The mock robot will move to
-that new pose, which you can see by the movement of the robot axes.
+该软件包应能与导航栈干净整合，或许还能通过重新映射实现。
 
-In the demo, both forward and backward movement is allowed, so if the goal position is behind the robot,
-it will move backward. You can force the robot to move foward only by setting the parameter `~forwardMovementOnly`
-to `true`.
+节点应使用导航栈使用的标准主题和参数名称，但应允许重新映射。
 
-== ROS API
+演示
+要查看该包中所有节点的运行，你可以从 ROS 启动演示。没有 除了标准ROS包之外的依赖。
 
-=== 1. diff_drive_controller
+roslaunch diff_drive demo.launch
+这会作为演示的一部分启动rviz，并显示机器人位置为一个小坐标系 0.25米的网格。在rviz中，你可以通过点击顶部工具面板中的2D导航目标按钮来移动机器人。 然后在网格内点击并拖曳，设置机器人的目标位置和航向。模拟机器人将移动到 那个新姿势，你可以通过机器人斧头的运动看到。
 
-Listens for desired linear and angular velocity, and publishes corresponding wheel velocities, in encoder ticks per second, required to achieve those velocities.
+演示中允许前进和后退移动，如果目标位置在机器人后方， 它会向后移动。你只能通过将参数设置为 来强制机器人前进。~forwardMovementOnlytrue
 
-==== Published Topics
+ROS API
+1. diff_drive_controller
+监听所需的线性和角速度，并发布相应的轮速（编码器每秒刻数），以实现这些速度所需的。
 
-`~lwheel_desired_rate` (std_msgs/Int32)::
-Desired left wheel rotation rate, in encoder ticks per second.
+已发表主题
+~lwheel_desired_rate（std_msgs/Int32）
+期望的左轮转速，单位为编码器每秒的刻数。
 
-`~rwheel_desired_rate` (std_msgs/Int32)::
-Desired right wheel rotation rate, in encoder ticks per second.
+~rwheel_desired_rate（std_msgs/Int32）
+期望右轮转速，单位为编码器每秒刻数。
 
-==== Subscribed Topics
+订阅主题
+~cmd_vel（geometry_msgs/扭转）
+期望的线速度和角速度。
 
-`~cmd_vel` (geometry_msgs/Twist)::
-Desired linear and angular velocity.
+参数
+~ticks_per_meter（双重）
+每米行程编码器滴答次数。
 
-==== Parameters
+~wheel_separation（双重）
+两个轮之间的距离（米）。
 
-`~ticks_per_meter` (double)::
-Number of encoder ticks per meter of travel.
+~rate（智力，默认：50）
+输出速度目标消息的发布速率（Hz）。
 
-`~wheel_separation` (double)::
-Distance between the two wheels (meters).
+~timeout（int，默认值：0.2）
+消息之间预期的最大秒数。如果未在此限制内接收到，控制器将执行以下命令 节点已经死亡，将将期望的轮速设为零，以停止机器人。cmd_velcmd_vel
 
-`~rate` (int, default: 50)::
-The rate that the output velocity target messages will be published (Hz).
+2. diff_drive_odometry
+监听车轮运动并进行评分，并发布 odom 框架与机器人框架之间的变换。
 
-`~timeout` (int, default: 0.2)::
-The maximum number of seconds expected between `cmd_vel` messages. If `cmd_vel`
-is not received before this limit, the controller will assume the commanding
-node has died and will set the desired wheel rates to zero, to stop the robot.
+已发表主题
+~odom——（nav_msgs/里程计）
+机器人里程计——当前机器人姿势。
 
-=== 2. diff_drive_odometry
+~tf
+里程计框架和机器人框架之间的变换。
 
-Listens for wheel movement and rates and publishes the transform between the odom frame and the robot frame.
+订阅主题
+~lwheel_ticks（std_msgs/Int32）
+左轮累计编码器滴答。
 
-==== Published Topics
+~rwheel_ticks（std_msgs/Int32）
+右轮累计编码器滴答。
 
-`~odom` -- (nav_msgs/Odometry)::
-The robot odometry -- the current robot pose.
+~lwheel_rate（std_msgs/Float32）
+左轮转速，以编码器每秒的刻数表示。
 
-`~tf`::
-The transform between the odometry frame and the robot frame.
+~rwheel_rate（std_msgs/Float32）
+右轮转速，以编码器每秒的刻数表示。
 
-==== Subscribed Topics
+参数
+~ticks_per_meter（双重）
+每米行程编码器滴答次数。
 
-`~lwheel_ticks` (std_msgs/Int32)::
-Cumulative encoder ticks of the left wheel.
+~wheel_separation（双重）
+两个轮之间的距离（m）。
 
-`~rwheel_ticks` (std_msgs/Int32)::
-Cumulative encoder ticks of the right wheel.
+~rate（双倍，默认10.0）
+和主题的发布速率（Hz）。tfodom
 
-`~lwheel_rate` (std_msgs/Float32)::
-Left wheel rotation rate, in encoder ticks per second.
+~timeout（双倍，默认0.2）
+收到扭转消息后继续发布所需轮子速率的时间（秒数）。 如果设置为零，只有在收到新的扭转消息时才会发送轮速。
 
-`~rwheel_rate` (std_msgs/Float32)::
-Right wheel rotation rate, in encoder ticks per second.
+~base_frame_id（字符串，默认：“base_link”）
+机器人基础框架的名称。
 
-==== Parameters
+~odom_frame_id（字符串，默认：“odom”）
+里程参考系的名称。
 
-`~ticks_per_meter` (double)::
-Number of encoder ticks per meter of travel.
+~encoder_min（整数，默认：-32768）
+~encoder_max（int，默认：32768）
+编码器应该输出的最小值和最大值。用来计算里程计数，当数值绕行时。
 
-`~wheel_separation` (double)::
-Distance between the two wheels (m).
+~wheel_low_wrap（int，默认值：0.3 * （encoder_max - encoder_min + 1） + encoder_min）
+~wheel_high_wrap（int，默认：0.7 * （encoder_max - encoder_min + 1） + encoder_min）
+如果读数大于wheel_high_wrap，下一个读数小于wheel_low_wrap，则读数已绕正方向，里程计数将被适当计算。同样的道理也适用于负面方向。
 
-`~rate` (double, default 10.0)::
-The rate at which the `tf` and `odom` topics are published (Hz).
+3. diff_drive_go_to_goal
+监听新的目标姿态，并计算实现目标所需的速度。
 
-`~timeout` (double, default 0.2)::
-The amount of time to continue publishing desired wheel rates after receiving a twist message (seconds).
-If set to zero, wheel velocities will be sent only when a new twist message is received.
+已发表主题
+~distance_to_goal（std_msgs/Float32）
+距离目标位置（米）。
 
-`~base_frame_id` (string, default: "base_link")::
-The name of the base frame of the robot. 
+~cmd_vel（geometry_msgs/扭转）
+目标姿势所需的线速度和角速度。
 
-`~odom_frame_id` (string, default: "odom")::
-The name of the odometry reference frame. 
+订阅主题
+~goal（geometry_msgs/姿势）
+想要的目标姿势。
 
-`~encoder_min` (int, default: -32768)::
+参数
+~rate（浮点，默认：10）
+发布所需速度（Hz）的速率。
 
-`~encoder_max` (int, default: 32768)::
-The min and max value the encoder should output. Used to calculate odometry when the values wrap around. 
+~goal_linear_tolerance（float，默认：0.1）
+假设机器人已到达目标位置的距离（米）。
 
-`~wheel_low_wrap` (int, default: 0.3 * (encoder_max - encoder_min + 1) + encoder_min)::
+~goal_angular_tolerance（float，默认值：0.087）
+机器人角度与目标姿态角度的差值，假设机器人在该角度下具有 实现目标姿态（弧度）。默认温度大约是5度。
 
-`~wheel_high_wrap` (int, default: 0.7 * (encoder_max - encoder_min + 1) + encoder_min)::
-If a reading is greater than wheel_high_wrap and the next reading is less than wheel_low_wrap, then the reading has wrapped around in the positive direction, and the odometry will be calculated appropriately. The same concept applies for the negative direction.
+~max_linear_velocity（浮点数，默认：0.2）
+目标方向的最大线速度（米/秒）。
 
-=== 3. diff_drive_go_to_goal
+~max_angular_velocity（浮点，默认：1.5）
+最大角速度（弧度/秒）。
 
-Listens for new goal poses and computes velocities needed to achieve the goal.
+~max_linear_acceleration（浮点，默认：4.0）
+最大线加速度（米/秒^2）。
 
-==== Published Topics
+~forwardMovementOnly（布尔值，默认：真）
+如果属实，则只能向前移动以达到目标位置。 如果是假，机器人会向后移动到目标，如果那是最大数 直线路径。
 
-`~distance_to_goal` (std_msgs/Float32)::
-Distance to the goal position (meters).
+~Kp（float，默认：3.0）
+线性距离比例常数。数值越高，机器人向目标加速越快，减速越慢。
 
-`~cmd_vel` (geometry_msgs/Twist)::
-Desired linear and angular velocity to move toward the goal pose.
+~Ka（float：默认：8.0）
+角度与球门位置的比例常数。数值越高，机器人转向速度越快，朝目标方向转动。
 
-==== Subscribed Topics
+~Kb（float：默认：-1.5）
+角度与目标姿势方向的比例常数。数值越高，机器人越能快速转向目标姿势方向。根据自主移动机器人，这个数值应为负数。
 
-`~goal` (geometry_msgs/Pose)::
-Desired goal pose.
+确定线速度和角速度以朝目标移动的控制定律如下。设 d 为距离目标。设a为机器人航向与目标位置之间的夹角，其中左边为正。设b为目标方向与最终姿态角度之间的夹角，其中左侧为正。然后计算机器人的线性速度和角速度如下：
 
-==== Parameters
+v = Kp * d
+w = Ka*a + Kb*b
+参见Siegwart等人著作《自主移动机器人》第二版。第3.6.2.4条。在这个代码中，当机器人 距离目标足够近，v设为零，w则简单地等于Kb*b。
 
-`~rate` (float, default: 10)::
-Rate at which to publish desired velocities (Hz).
+为了确保目标趋同，Kp以及Ka必须是正的，Kb必须为负，且Ka必须大于Kp.为了确保稳健的收敛，使机器人永不改变方向，Ka- 5/3*Kb- 2/π*Kp必须大于零。
 
-`~goal_linear_tolerance` (float, default: 0.1)::
-The distance from the goal at which the robot is assumed to have accomplished the goal position (meters).
+4. diff_drive_mock_robot
+实现完美差动驱动机器人硬件的模拟。它紧接着任何速度 以无限加速接收的命令，并发布轮式编码器值和编码器 利率。
 
-`~goal_angular_tolerance` (float, default: 0.087)::
-The difference between robot angle and goal pose angle at which the robot is assumed to have
-accomplished the goal attitude (radians). Default value is approximately 5 degrees.
+已发表主题
+~lwheel_ticks（std_msgs/Int32）
+左轮累计编码器滴答。
 
-`~max_linear_velocity` (float, default: 0.2)::
-The maximum linear velocity toward the goal (meters/second).
+~rwheel_ticks（std_msgs/Int32）
+右轮累计编码器滴答。
 
-`~max_angular_velocity` (float, default: 1.5)::
-The maximum angular velocity (radians/second).
+~lwheel_rate（std_msgs/Float32）
+左轮转速，以编码器每秒的刻数表示。
 
-`~max_linear_acceleration` (float, default: 4.0)::
-The maximum linear acceleration (meters/second^2).
+~rwheel_rate（std_msgs/Float32）
+右轮转速，以编码器每秒的刻数表示。
 
-`~forwardMovementOnly` (boolean, default: true)::
-If true, only forward movement is allowed to achieve the goal position.
-If false, the robot will move backward to the goal if that is the most
-direct path.
+订阅主题
+~lwheel_desired_rate（std_msgs/Int32）
+期望的左轮转速，单位为编码器每秒的刻数。
 
-`~Kp` (float, default: 3.0)::
-Linear distance proportionality constant. Higher values make the robot accelerate more quickly toward the goal and decelerate less quickly.
+~rwheel_desired_rate（std_msgs/Int32）
+期望右轮转速，单位为编码器每秒刻数。
 
-`~Ka` (float: default: 8.0)::
-Proportionality constant for angle to goal position. Higher values make the robot turn more quickly toward the goal.
+参数
+~cmd_timeout（浮点数，默认：0.2）
+机器人在最后一个轮速信息后自动停止的时间（秒）。
 
-`~Kb` (float: default: -1.5)::
-Proportionality constant for angle to goal pose direction. Higher values make the robot turn more quickly toward the goal pose direction. This value should be negative, per _Autonomous Mobile Robots_.
-
-The control law for determining the linear and angular velocity to move toward the goal works as follows. Let _d_ be the distance to the goal. Let _a_ be the angle between the robot heading and the goal position, where left is positive. Let _b_ be the angle between the goal direction and the final pose angle, where left is positive. Then the robot linear and angular velocities are calculated like this:
-
-    v = Kp * d
-    w = Ka*a + Kb*b
-
-See _Autonomous Mobile Robots, Second Edition_ by Siegwart et. al., section 3.6.2.4. In this code, when the robot
-is near enough to the goal, _v_ is set to zero, and _w_ is simply _Kb*b_.
-
-To ensure convergence toward the goal, _K~p~_ and _K~a~_ must be positive, _K~b~_ must be negative, and _K~a~_
-must be greater than _K~p~_. To ensure robust convergence, so that the robot never changes direction,
-_K~a~_ - 5/3*_K~b~_ - 2/pi*_K~p~_ must be greater than zero.
-
-=== 4. diff_drive_mock_robot
-
-Implements a simulation of perfect differential drive robot hardware. It immediately follows any speed
-commands received with infinite acceleration, and publishes the wheel encoder values and encoder
-rates.
-
-==== Published Topics
-
-`~lwheel_ticks` (std_msgs/Int32)::
-Cumulative encoder ticks of the left wheel.
-
-`~rwheel_ticks` (std_msgs/Int32)::
-Cumulative encoder ticks of the right wheel.
-
-`~lwheel_rate` (std_msgs/Float32)::
-Left wheel rotation rate, in encoder ticks per second.
-
-`~rwheel_rate` (std_msgs/Float32)::
-Right wheel rotation rate, in encoder ticks per second.
-
-==== Subscribed Topics
-
-`~lwheel_desired_rate` (std_msgs/Int32)::
-Desired left wheel rotation rate, in encoder ticks per second.
-
-`~rwheel_desired_rate` (std_msgs/Int32)::
-Desired right wheel rotation rate, in encoder ticks per second.
-
-==== Parameters
-
-`~cmd_timeout` (float, default: 0.2)::
-The amount of time after the last wheel rate message when the robot should stop automatically (seconds).
-
-`~rate` (float, default 10.0)::
-The rate at which the simulated wheel encoder values and rates should be published (Hz).
+~rate（float，默认10.0）
+模拟轮编码器值和速率应公布的速率（Hz）。
