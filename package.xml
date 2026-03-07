@@ -5,11 +5,11 @@
   <description>
     This package implements a control mechanism for a differential drive robot.
   </description>
-  <author>Mark Rose</author>
-  <maintainer email="markrose@acm.org">Mark Rose</maintainer>
-  <url type="website">https://github.com/merose/diff_drive</url>
-  <url type="repository">https://github.com/merose/diff_drive.git</url>
-  <url type="bugtracker">https://github.com/merose/diff_drive/issues</url>
+  <author>po54117403-droid</author>
+  <maintainer email="po54117403@163.com">Mark Rose</maintainer>
+  <url type="website">https://github.com/po54117403-droid/ROS-ROBOT-API</url>
+  <url type="repository">https://github.com/po54117403-droid/ROS-ROBOT-API.git</url>
+  <url type="bugtracker">https://github.com/po54117403-droid/ROS-ROBOT-API/issues</url>
   <license>BSD</license>
   <buildtool_depend>catkin</buildtool_depend>
 
